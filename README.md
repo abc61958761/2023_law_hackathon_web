@@ -1,4 +1,4 @@
-# ptcg_account_web
+# 2023_law_hackathon_web
 
 ## Project setup
 ```
