@@ -104,7 +104,7 @@
                 </div>
                 <v-data-table
                     :headers="headers"
-                    :items="desserts"
+                    :items="judgementList"
                     :page.sync="page"
                     hide-default-footer
                     class="elevation-0 project_table"
@@ -141,6 +141,8 @@
     </div>
 </template>
 <script>
+import { mapGetters } from "vuex";
+
 export default {
     data: vm => ({
             projectId: 1,
@@ -179,15 +181,22 @@ export default {
             }]
         }
     ),
+    async mounted() {
+        this.projectId = this.$route.params.projectId
+        await this.$store.dispatch("getJudgementList", {projectId: this.projectId});
+    },
     computed: {
       computedDateFormatted () {
         return this.formatDate(this.date)
       },
+      ...mapGetters({
+        judgementList: "judgementList"
+      }),
     },
     watch: {
       date () {
         this.dateFormatted = this.formatDate(this.date)
-      },
+      }
     },
     methods: {
         markSetting(item) {
@@ -209,7 +218,7 @@ export default {
             return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
         },
         goVerdictDetail(item) {
-            this.$router.push(`/projects/${item.id}/verdicts/${item.id}`)
+            this.$router.push(`/projects/${this.projectId}/verdicts/${item.id}`)
         }
     }
 }

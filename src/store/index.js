@@ -1,9 +1,12 @@
 
-  import Vue from 'vue';
+import Vue from 'vue';
 import Vuex from 'vuex';
 
 import verdict from './modules/verdict';
-import judgment from './modules/judgment';
+import judgement from './modules/judgement';
+import project from './modules/project';
+import markConfig from './modules/markConfig';
+import user from './modules/user';
 
 Vue.use(Vuex);
 
@@ -16,7 +19,10 @@ export function createStore() {
   return new Vuex.Store({
     modules: {
       verdict,
-      judgment
+      judgement,
+      project,
+      markConfig,
+      user
     }
   });
 }

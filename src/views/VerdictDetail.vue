@@ -11,58 +11,104 @@
         </div>
         <div class="d-flex" style="overflow: hidden; height:100%">
             <div style="width: 100%;overflow: scroll;" class="pa-4 pb-8">
-                <h2 class="mb-4">法務部 法律字第10603504060號</h2>
-                <div ref="content" v-on:mouseup="testFunction" style="display: inline;">
-                    <div class="newContent">{{newContent}}</div>
+                <h2 class="mb-4">{{judgement.name}}</h2>
+                <div id="content" ref="content" v-on:mouseup="testFunction" style="display: inline;">
+                    <div ref="newContent" class="newContent">{{newContent}}</div>
                 </div>
-            </div>
-            <v-card style="width:400px" class="pa-4" outlined>
+            </div> 
+            <v-card style="width:600px;" class="pa-4 d-flex flex-column" outlined>
                 <h3 class="mb-4">標記題目</h3>
-                <v-card outlined v-for="(item, index) in items" :key="index" class="pa-4 mb-2">
-                    <div class="d-flex">
-                        法院層級
-                        <v-spacer></v-spacer>
-                        <v-btn class="mx-1 pa-0" @click="test" style="min-wight:30px;color:#F18B41" color="#FFF2E3" small depressed>
-                            <v-icon dark>
-                                mdi-pencil
-                            </v-icon>
-                        </v-btn>
-                    </div>
-                    
-                    <v-radio-group row v-model="radioGroup" v-if="item.type=='radio'" hide-details="true">
-                        <v-radio
-                            label="是"
-                            value="Yes"
-                        ></v-radio>
-                        <v-radio
-                            label="否"
-                            value="No"
-                        ></v-radio>
-                    </v-radio-group>
-                    <v-textarea
-                        v-if="item.type=='textarea'"
-                        auto-grow
-                        outlined
-                        rows="1"
-                        row-height="15"
-                        hide-details="true"
-                        class="mt-4"
-                        ></v-textarea>
-                    <v-text-field
-                        v-if="item.type=='field'"
-                        outlined
-                        hide-details="true"
-                        class="mt-4"
-                    ></v-text-field>
-                </v-card>
+                <div style="flex:1; overflow: scroll;">
+                    <v-card outlined v-for="(item, index) in variableList" :key="item.id" class="pa-4 mb-2">
+                        <div class="d-flex">
+                            {{item.issue}}
+                            <v-spacer></v-spacer>
+                            <v-btn class="mx-1 pa-0" v-if="!item.isEdit" @click="editBtn(item, index)" style="min-wight:30px;color:#F18B41" color="#FFF2E3" small depressed>
+                                <v-icon dark>
+                                    mdi-pencil
+                                </v-icon>
+                            </v-btn>
+                            <v-btn class="mx-1 pa-0" v-if="item.isEdit"  @click="closeBtn(item, index)" style="min-wight:30px;color:#9A9A9A" color="#F4F4F4" small depressed>
+                                <v-icon dark>
+                                    mdi-close-thick
+                                </v-icon>
+                            </v-btn>
+                            <v-btn class="mx-1 pa-0" v-if="item.isEdit" @click="checkBtn(item,index)" style="min-wight:30px;color:#53BBB2" color="#E9FCFA" small depressed>
+                                <v-icon dark>
+                                    mdi-check-bold
+                                </v-icon>
+                            </v-btn>
+                        </div>
+                        
+                        <v-radio-group row v-model="item.answer" v-if="item.unitType == 'radio'" hide-details="true">
+                            <v-radio
+                                label="是"
+                                value="Yes"
+                                color="#53BBB2"
+                                :disabled="!item.isEdit"
+                            ></v-radio>
+                            <v-radio
+                                label="否"
+                                value="No"
+                                color="#53BBB2"
+                                :disabled="!item.isEdit"
+                            ></v-radio>
+                        </v-radio-group>
+                        <div class="d-flex" v-if="item.unitType == 'multipleChoice'">
+                            <v-checkbox :disabled="!item.isEdit" class="mr-2" color="#53BBB2" hide-details v-for="(value, name, index) in item.answer" :key="index" :label="name"></v-checkbox>
+                        </div>
+                            <v-text-field
+                                :disabled="!item.isEdit"
+                                v-if="item.unitType=='text'"
+                                outlined
+                                hide-details="true"
+                                class="mt-4"
+                                v-model="item.answer"
+                                color="#53BBB2"
+                            ></v-text-field>
+                        <v-menu
+                            ref="dateFormatted"
+                            v-if="item.unitType == 'datatime'"
+                            v-model="datatimeMenu"
+                            :close-on-content-click="false"
+                            transition="scale-transition"
+                            offset-y
+                            min-width="auto"
+                        >
+                            <template v-slot:activator="{ on, attrs }">
+                                <v-text-field
+                                    :disabled="!item.isEdit"
+                                    color="#53BBB2"
+                                    v-model="item.answer"
+                                    prepend-icon="mdi-calendar"
+                                    readonly
+                                    v-bind="attrs"
+                                    v-on="on"
+                                ></v-text-field>
+                            </template>
+                            <v-date-picker
+                                color="#53BBB2"
+                                v-model="item.answer"
+                                no-title
+                                scrollable
+                                @change="datatimeMenu = false"
+                                >
+                            </v-date-picker>
+                        </v-menu>
+                    </v-card>
+                </div>
+                <v-btn depressed class="btn-depressed" @click="submitMarkConfig">完成標記</v-btn>
             </v-card>
         </div>
     </div>
 </template>
 <script>
+import { mapGetters } from "vuex";
+
 export default {
     data() {
         return {
+            datatimeMenu: false,
             starts:[],
             ends: [],
             breadcrumbItems: [{
@@ -85,27 +131,115 @@ export default {
                 value: '2'
             }],
             radioGroup: 0,
-            content: "(四)刑法第 310 條第 3 項前段:「對於所誹謗之事，能證明其為真實者，不罰」。司法院釋字第 509 號解釋亦認該 條項前段所稱:「對於所誹謗之事，能證明其為真實者，不罰」等語，係以指摘或傳述足以毀損他人名譽事項之 行為人，其言論內容與事實相符者為不罰之條件，其「並非謂行為人必須自行證明其言論內容確屬真實，始能免 於刑責。惟行為人雖不能證明言論內容為真實，但依其所提證據資料，認為行為人有相當理由確信其為真實者， 即不能以誹謗罪之刑責相繩，亦不得以此項規定而免除檢察官或自訴人於訴訟程序中，依法應負行為人故意毀損 他人名譽之舉證責任，或法院發現其為真實之義務」等語(參見該解釋文及解釋理由書)，賦予刑法第 310 條第 3 項之規定，具有類似(民事上)舉證責任及(刑事上)舉證義務轉換之效果，亦即民事上之原告，或刑事上之公 訴檢察官、自訴人等，如欲提出此項誹謗罪之名譽賠償或刑事追訴，應負有舉證責任，證明被告具有「故意毀損 他人名譽」之意圖。換言之，大法官認為名譽受到某發表言論之人侵害者，必須能夠證明發表言論者具有「真正 惡意」，亦即發表言論者於發表言論時明知所言非真實或過於輕率疏忽而未探究所言是否為真實，則此種不實內容之言論才要受法律制裁或負擔賠償責任。惟刑法第 309 條之侮辱罪，係指未指摘事實之抽象謾罵而言，已如上 述，既無事實，自無證明真實與否之問題，且刑法第 310 條第 3 項既與誹謗罪規定於同條項內，足認僅誹謗罪有 其適用，於侮辱罪原則上無適用之餘地。然言論中事實陳述與意見表達在概念上本屬流動，有時難期其涇渭分 明。是若意見係以某項事實為基礎或發言過程中夾論夾敘，將事實敘述與評論混為一談時，即應考慮事實之真偽 問題。換言之，此時不能將評論自事實抽離，而不論事實之真實與否，逕以「評論」粗俗不堪，論以公然侮辱。 否則屬於事實陳述之言論因符合刑法第 310 條第 3 項之要件而不罰，基於該事實陳述而為之意見表達，反因所為 用語損及名譽而受處罰，自非法理之平。(五)刑法第 311 條第 3 款規定:「以善意發表言論，而有左列情形之一者，不罰:三、對於可受公評之事，而為適當之評論者」。此一不罰事由，既規定於同一章，則在同為「妨害名譽」言論類型的公然侮辱罪，當未可逕行排 斥其適用。惟所謂「可受公評之事」，係指依該事實之性質，在客觀上係可接受公眾評論者，如國家或地方之政 事、政治人物之言行、公務員執行職務之行為、與公共安全、社會秩序、公眾利益有關之事件等。又所謂「適當條免罰事由之前提，須「以善意發表言論」，然對人主觀之評論意見，除了正面之評價外，負面的評價亦所在多有，對被評論人而言，如認為該負面的評價使其名譽受損，自難認為評論之人係善意發表言論，故所謂「善意」價，亦難認係非善意發表言論。反之，評論人之評論並非合理適當，超過社會一般大眾可接受之程度，足認其非 善意發表言論，如該言論又係公然為之，自成立公然侮辱罪。 (六)被告雖辯稱:告訴人自己做了妨害自己名譽之行為，被告留言之評論對告訴人種種行為在社會上之客觀評價並無影響，不應視為名譽之侵害云云。惟查:告訴人雖因領取其母親存款而遭其弟賈正道、其妹賈淑宜提出竊盜告訴，並經檢察官偵查中，然犯罪嫌疑人於 判決確定前均受有無罪推定原則之保護，在事實不明之情況下，任何人關於此事件對告訴人所為之負面評論，客 觀上對告訴人名譽自然有所損害。被告此部分所辯，並不足採。故本件應審酌者，為被告之評論是否合理適當。 查被告發表如附表編號 1、2(即附件編號 3、7)所示留言之前後脈絡詳如附件所示之新聞報導及留言，被告與 其他網友於標題為「賈家道口燒雞爆爭產，兄妹反目成仇」之新聞後「發表迴響」欄發表意見之情形如下: 1被告以「Andy」之暱稱，於 100 年 3 月 13 日中午 12 時 16 分許，發表如附件留言編號 1 之內容(為被告所坦 承，此部分經檢察官不另為不起訴處分)。2暱稱「阿華」之人，於 100 年 3 月 13 日中午 12 時 19 分許，發表如附件留言編號 2 所示之內容。",
+            content: "",
             markContent: {},
-            newContent:"(四)刑法第 310 條第 3 項前段:「對於所誹謗之事，能證明其為真實者，不罰」。司法院釋字第 509 號解釋亦認該 條項前段所稱:「對於所誹謗之事，能證明其為真實者，不罰」等語，係以指摘或傳述足以毀損他人名譽事項之 行為人，其言論內容與事實相符者為不罰之條件，其「並非謂行為人必須自行證明其言論內容確屬真實，始能免 於刑責。惟行為人雖不能證明言論內容為真實，但依其所提證據資料，認為行為人有相當理由確信其為真實者， 即不能以誹謗罪之刑責相繩，亦不得以此項規定而免除檢察官或自訴人於訴訟程序中，依法應負行為人故意毀損 他人名譽之舉證責任，或法院發現其為真實之義務」等語(參見該解釋文及解釋理由書)，賦予刑法第 310 條第 3 項之規定，具有類似(民事上)舉證責任及(刑事上)舉證義務轉換之效果，亦即民事上之原告，或刑事上之公 訴檢察官、自訴人等，如欲提出此項誹謗罪之名譽賠償或刑事追訴，應負有舉證責任，證明被告具有「故意毀損 他人名譽」之意圖。換言之，大法官認為名譽受到某發表言論之人侵害者，必須能夠證明發表言論者具有「真正 惡意」，亦即發表言論者於發表言論時明知所言非真實或過於輕率疏忽而未探究所言是否為真實，則此種不實內容之言論才要受法律制裁或負擔賠償責任。惟刑法第 309 條之侮辱罪，係指未指摘事實之抽象謾罵而言，已如上 述，既無事實，自無證明真實與否之問題，且刑法第 310 條第 3 項既與誹謗罪規定於同條項內，足認僅誹謗罪有 其適用，於侮辱罪原則上無適用之餘地。然言論中事實陳述與意見表達在概念上本屬流動，有時難期其涇渭分 明。是若意見係以某項事實為基礎或發言過程中夾論夾敘，將事實敘述與評論混為一談時，即應考慮事實之真偽 問題。換言之，此時不能將評論自事實抽離，而不論事實之真實與否，逕以「評論」粗俗不堪，論以公然侮辱。 否則屬於事實陳述之言論因符合刑法第 310 條第 3 項之要件而不罰，基於該事實陳述而為之意見表達，反因所為 用語損及名譽而受處罰，自非法理之平。(五)刑法第 311 條第 3 款規定:「以善意發表言論，而有左列情形之一者，不罰:三、對於可受公評之事，而為適當之評論者」。此一不罰事由，既規定於同一章，則在同為「妨害名譽」言論類型的公然侮辱罪，當未可逕行排 斥其適用。惟所謂「可受公評之事」，係指依該事實之性質，在客觀上係可接受公眾評論者，如國家或地方之政 事、政治人物之言行、公務員執行職務之行為、與公共安全、社會秩序、公眾利益有關之事件等。又所謂「適當條免罰事由之前提，須「以善意發表言論」，然對人主觀之評論意見，除了正面之評價外，負面的評價亦所在多有，對被評論人而言，如認為該負面的評價使其名譽受損，自難認為評論之人係善意發表言論，故所謂「善意」價，亦難認係非善意發表言論。反之，評論人之評論並非合理適當，超過社會一般大眾可接受之程度，足認其非 善意發表言論，如該言論又係公然為之，自成立公然侮辱罪。 (六)被告雖辯稱:告訴人自己做了妨害自己名譽之行為，被告留言之評論對告訴人種種行為在社會上之客觀評價並無影響，不應視為名譽之侵害云云。惟查:告訴人雖因領取其母親存款而遭其弟賈正道、其妹賈淑宜提出竊盜告訴，並經檢察官偵查中，然犯罪嫌疑人於 判決確定前均受有無罪推定原則之保護，在事實不明之情況下，任何人關於此事件對告訴人所為之負面評論，客 觀上對告訴人名譽自然有所損害。被告此部分所辯，並不足採。故本件應審酌者，為被告之評論是否合理適當。 查被告發表如附表編號 1、2(即附件編號 3、7)所示留言之前後脈絡詳如附件所示之新聞報導及留言，被告與 其他網友於標題為「賈家道口燒雞爆爭產，兄妹反目成仇」之新聞後「發表迴響」欄發表意見之情形如下: 1被告以「Andy」之暱稱，於 100 年 3 月 13 日中午 12 時 16 分許，發表如附件留言編號 1 之內容(為被告所坦 承，此部分經檢察官不另為不起訴處分)。2暱稱「阿華」之人，於 100 年 3 月 13 日中午 12 時 19 分許，發表如附件留言編號 2 所示之內容。",
-            selectEl: null
+            newContent: "",
+            selectEl: null,
+            variableList:[],
+            anw: {},
+            tmpContent: {},
+            tempPositions: {}
         }
     },
-    mounted() {
+    computed: {
+      ...mapGetters({
+        judgement: "judgement",
+        markConfigList: "markConfigList"
+      }),
+    },
+    watch: {
+        markConfigList(data) {
+            for (const item of data.selectQuestions.categoricalVariableList) {
+                console.log(item)
+                item['isEdit'] = false
+                this.variableList.push(item)
+                if (item.positions && item.positions.length >0) {
+                    if (!this.tempPositions[item.judgementId]) {
+                        this.tempPositions[item.judgementId] = {}
+                    }
+                    this.tempPositions[item.judgementId][item.positions[0]] = item.positions
+                }
+            }
+            for (const item of data.selectQuestions.continuousVariableList) {
+                item['isEdit'] = false
+                this.variableList.push(item)
+                if (item.positions && item.positions.length >0) {
+                    if (!this.tempPositions[item.judgementId]) {
+                        this.tempPositions[item.judgementId] = {}
+                    }
+                    this.tempPositions[item.judgementId][item.positions[0]] = item.positions
+                }
+            }
+
+            this.initContent(this.tempPositions)
+        },
+        judgement(data) {
+            const content = document.getElementById("content")
+            while (content.firstChild) {
+                content.removeChild(content.firstChild);
+            }
+            this.content = data.judgement
+            this.newContent = data.judgement
+            const node = this.createTextNode(data.judgement)
+            content.appendChild(node)
+            this.initContent(this.tempPositions)
+        }
+    },
+    async mounted() {
+        const verdictId = this.$route.params.verdictId
+        const projectId = this.$route.params.projectId
         document.addEventListener('mouseup', event => {
-        if (event.target === this.$refs.target || event.target.contains(this.$refs.target))
-            this.testFunction();
+            if (event.target === this.$refs.target || event.target.contains(this.$refs.target))
+                this.testFunction();
         });
+        await this.$store.dispatch("getJudgement", {id: verdictId});
+        // const noList = this.judgement.no.split(',')
+        // this.judgement['name'] = `${this.judgement.court} ${noList[0]}年 ${noList[1]}字 ${noList[2]}號`
+        // this.content = this.judgement.judgement
+        // this.newContent = this.judgement.judgement
+        await this.$store.dispatch("getMarkConfigList", {projectId});
+        
     },
     methods: {
-        test() {
+        initContent(tempPositions) {
+            const positions = tempPositions[this.judgement.id]
+            if (!positions) return;
+            console.log(positions)
+            for (const [key, value] of Object.entries(positions)) {
+                let newContents =  document.getElementsByClassName("newContent")
+                // console.log(newContents.length)
+                this.selectEl = newContents[newContents.length-1]
+                // console.log(this.selectEl)
+                let content = this.selectEl.innerHTML
+                let documentFragment = document.createDocumentFragment();
+                let withoutHighlightingStart = 0;
+                // console.log(content)
+                console.log("key", key)
+                // console.log("withoutHighlightingStart", withoutHighlightingStart)
+                if (value[0] > withoutHighlightingStart) {
+                    let notHighlighted = this.createTextNode(content.slice(withoutHighlightingStart, value[0]));
+                    // console.log(notHighlighted)
+                    documentFragment.appendChild(notHighlighted);
+                }
+                let highlighted = this.createHighlighted(content.slice(value[0], value[1]+1));
+                documentFragment.appendChild(highlighted);
+                withoutHighlightingStart = value[1]+1
+                let lastNotHighlighted = this.createTextNode(content.slice(withoutHighlightingStart));
+                documentFragment.appendChild(lastNotHighlighted);
+                this.selectEl.replaceWith(documentFragment)
+            }
+            
+        },
+        editBtn(item, index) {
+            
             let positions = [];
             let normalizedPositions = [];
             console.log(this.markContent)
             positions.push({ positions: this.markContent.start_index, value: 1})
             positions.push({ positions: this.markContent.end_index, value: -1})
             // for(const item of this.markContent) {
-                
+            try {
+  
             // }
             // console.log(positions)
             // this.starts.forEach(function(position) {
@@ -136,6 +270,7 @@ export default {
                     });
                 }
             }
+
             if (currentSection.counter) {
                 throw "last section has not been closed properly";   
             }
@@ -153,7 +288,9 @@ export default {
                 // console.log(notHighlighted)
                 documentFragment.appendChild(notHighlighted);
             }
+            console.log(content.slice(this.markContent.start_index, this.markContent.end_index+1))
             let highlighted = this.createHighlighted(content.slice(this.markContent.start_index, this.markContent.end_index+1));
+            console.log(highlighted)
             // console.log(highlighted)
             documentFragment.appendChild(highlighted);
             withoutHighlightingStart = this.markContent.end_index+1
@@ -173,16 +310,27 @@ export default {
             documentFragment.appendChild(lastNotHighlighted);
             console.log(documentFragment)
             // parentNode.replaceChild(documentFragment, textNodeToReplace);
-            
+
             this.selectEl.replaceWith(documentFragment)
             
             // console.log(parentNode)
+            if (item) {
+                this.changeBtn(item,index)
+                this.anw[item.id] = {
+                    positions: [this.markContent.start_index, this.markContent.end_index]
+                }
+            }
+            
+            } catch (e) {
+                console.log(e)
+            }
 
         },
         testFunction(event) {
             console.log(event.target);
             
             if (window.getSelection().toString().length == 0) return
+            console.log(event.target)
             this.selectEl = event.target
             console.log(window.getSelection())
             console.log(window.getSelection().toString())
@@ -208,6 +356,41 @@ export default {
             span.classList.add('newContent');
             span.appendChild(document.createTextNode(str));
             return span
+        },
+        async submitMarkConfig() {
+            for (const [key, value] of Object.entries(this.anw)) {
+                console.log({answer: value.answer, positions: value})
+                if (!this.tempPositions[this.judgement.id]) {
+                    this.tempPositions[this.judgement.id] = {}
+                }
+                this.tempPositions[this.judgement.id][value.positions] = value.positions
+                
+                await this.$store.dispatch("updateMarkConfig", {
+                    params: {answer: value.answer, positions: value.positions, judgementId: this.judgement.id},
+                    id: key
+                });
+            }
+        },
+        changeBtn(item, index) {
+            this.variableList.splice(index, 1, {
+                ...item,
+                isEdit: !item.isEdit
+            })
+        },
+        closeBtn(item, index) {
+            this.variableList.splice(index, 1, {
+                ...item,
+                isEdit: !item.isEdit
+            })
+        },
+        checkBtn(item, index) {
+            
+            this.anw[item.id]['answer'] = item.answer 
+            
+            this.variableList.splice(index, 1, {
+                ...item,
+                isEdit: !item.isEdit
+            })
         }
     },
     created() {
@@ -270,5 +453,6 @@ ul {
 }
 .newContent {
     display: inline;
+    white-space: pre;
 }
 </style>

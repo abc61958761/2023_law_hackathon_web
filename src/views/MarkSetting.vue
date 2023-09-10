@@ -9,28 +9,29 @@
                 </template>
             </v-breadcrumbs>
             <v-spacer></v-spacer>
-            <v-btn depressed class="btn-back">返回</v-btn>
-            <v-btn depressed class="ml-4 btn-depressed">建立標記設定</v-btn>
+            <v-btn depressed class="btn-back" @click="$router.go(-1)">返回</v-btn>
+            <v-btn depressed class="ml-4 btn-depressed" @click="addMarkConfigList">更新標記設定</v-btn>
         </div>
         <div style="background: #FAFCFE;overflow: scroll; flex:1; flex-direction:column;" class="pa-4 d-flex">
-            <div class="mb-4" style="font-weight:700; font-size:20px">離婚後親權裁判預測專案</div>
+            <div class="mb-4" style="font-weight:700; font-size:20px">{{project.name}}</div>
             <div class="d-flex">
-                <v-card elevation="0" class="pa-4 mr-2" style="flex:1">
+                <v-card elevation="0" class="pa-4 mr-2" style="flex:1" v-if="markConfigList.allQuestions">
                     <div class="d-flex align-center">
                         <v-card-title>選擇變相</v-card-title>
                         <v-spacer></v-spacer>
                         <v-btn depressed class="btn-depressed" @click="markSettingDialog=true">建立自訂義</v-btn>
                     </div>                        
                     <v-card elevation="0" class="mt-4">
-                        <v-card-subtitle style="font-weight:700">有無變相</v-card-subtitle>
+                        <v-card-subtitle style="font-weight:700">類別變項</v-card-subtitle>
                         <v-card elevation="0" style="background: #FAFCFE;">
                             <v-chip
+                            @click="addCategoricalVariable(value)"
                             class="ma-2"
                             label
                             size="x-large"
-                            v-for="value in 5" :key="value"
+                            v-for="value in markConfigList.allQuestions.categoricalVariableList" :key="value.id"
                             >
-                            是否有關
+                            {{value.issue}}
                             </v-chip>
                         </v-card>
                     </v-card>
@@ -39,21 +40,22 @@
                         <v-card-subtitle style="font-weight:700">連續變相</v-card-subtitle>
                         <v-card elevation="0" style="background: #FAFCFE;">
                             <v-chip
+                            @click="addContinuousVariable(value)"
                             class="ma-2"
                             label
                             size="x-large"
-                            v-for="value in 5" :key="value"
+                            v-for="value in markConfigList.allQuestions.continuousVariableList" :key="value.id"
                             >
-                            是否有關
+                            {{value.issue}}
                             </v-chip>
                         </v-card>
                     </v-card>
                 </v-card>
                 <v-card  elevation="0" style="flex:1" class="ml-2 pa-4">
                     <v-card-title>預覽</v-card-title>
-                    <v-card outlined v-for="(item, index) in test" :key="index" class="pa-4 mb-2">
+                    <v-card outlined v-for="(item, index) in categoricalVariableList" :key="item.id" class="pa-4 mb-2">
                         <div class="d-flex">
-                            法院層級
+                            {{item.issue}}
                             <v-spacer></v-spacer>
                             <v-btn :disabled="index==0" @click="down(index)" class="mx-1 pa-0 btn-icon__arrow" small depressed>
                                 <v-icon dark>
@@ -76,8 +78,7 @@
                                 </v-icon>
                             </v-btn>
                         </div>
-                        
-                        <v-radio-group row v-model="radioGroup" v-if="item.type=='radio'" hide-details="true">
+                        <v-radio-group row v-model="radioGroup" v-if="item.unitType == 'radio'" hide-details="true">
                             <v-radio
                                 label="是"
                                 value="Yes"
@@ -87,6 +88,35 @@
                                 value="No"
                             ></v-radio>
                         </v-radio-group>
+                        <div class="d-flex" v-if="item.unitType == 'multipleChoice'">
+                            <v-checkbox class="mr-2" color="#53BBB2" hide-details v-for="(option, index) in item.options" :key="index" :label="option"></v-checkbox>
+                        </div>
+                    </v-card>
+                    <v-card outlined v-for="(item, index) in continuousVariableList" :key="item.id" class="pa-4 mb-2">
+                        <div class="d-flex">
+                            {{item.issue}}
+                            <v-spacer></v-spacer>
+                            <v-btn :disabled="index==0" @click="down(index)" class="mx-1 pa-0 btn-icon__arrow" small depressed>
+                                <v-icon dark>
+                                    mdi-arrow-up-bold
+                                </v-icon>
+                            </v-btn>
+                            <v-btn @click="top(index)" :disabled="index==test.length-1"  class="mx-1 pa-0 btn-icon__arrow" small depressed>
+                                <v-icon dark>
+                                    mdi-arrow-down-bold
+                                </v-icon>
+                            </v-btn>
+                            <v-btn class="mx-1 pa-0 btn-icon__pencil" small depressed>
+                                <v-icon dark>
+                                    mdi-pencil
+                                </v-icon>
+                            </v-btn>
+                           <v-btn @click="deleteItem=true" class="mx-1 pa-0 btn-icon__trash" small depressed>
+                                <v-icon dark>
+                                    mdi-trash-can
+                                </v-icon>
+                            </v-btn>
+                        </div>
                         <v-textarea
                             v-if="item.type=='textarea'"
                             auto-grow
@@ -97,7 +127,7 @@
                             class="mt-4"
                             ></v-textarea>
                         <v-text-field
-                            v-if="item.type=='field'"
+                            v-if="item.unitType=='text'"
                             outlined
                             hide-details="true"
                             class="mt-4"
@@ -359,9 +389,12 @@
     
 </template>
 <script>
+import { mapGetters } from "vuex";
 export default {
     data() {
         return {
+            projectId: "",
+            project: {},
             multipleItems: [{
                 value: ""
             }],
@@ -373,8 +406,11 @@ export default {
             }, {
                 text: "連續變項"
             }],
-            pattern: "多選",
+            pattern: "單選",
             patternItems:[{
+                text: "單選"
+            },
+            {
                 text: "多選"
             }],
             markSettingDialog: false,
@@ -401,7 +437,32 @@ export default {
             }, {
                 type: 'field',
                 value: '2'
-            }]
+            }],
+            selectedCategoricalVariableList:{},
+            selectedContinuousVariableList:{},
+            categoricalVariableList:[],
+            continuousVariableList: []
+        }
+    },
+    computed: {
+      ...mapGetters({
+        markConfigList: "markConfigList",
+      }),
+    },
+    async mounted() {
+      this.projectId = this.$route.params.projectId
+      this.project = {}
+      const markConfigParmas = {}
+      if (this.projectId) {
+        markConfigParmas['projectId'] = this.projectId
+        this.project = await this.$store.dispatch("getProject", this.projectId);
+      }
+      await this.$store.dispatch("getMarkConfigList", markConfigParmas);
+    },
+    watch: {
+        markConfigList(data) {
+            this.continuousVariableList = data.selectQuestions.continuousVariableList
+            this.categoricalVariableList = data.selectQuestions.categoricalVariableList
         }
     },
     methods: {
@@ -439,8 +500,51 @@ export default {
                     text: "日期"
                 }]
             }
+        },
+        addCategoricalVariable(item) {
+            for(const markConfig of this.categoricalVariableList) {
+                if (markConfig.questionId == item.id) return
+            }
+            this.categoricalVariableList.push({
+                ...item,
+                questionId: item.id
+            })
+            Object.assign(this.selectedCategoricalVariableList, {[item.id] : {
+                ...item,
+                questionId: item.id
+            }})
+        },
+        addContinuousVariable(item) {
+            for(const markConfig of this.continuousVariableList) {
+                if (markConfig.questionId == item.id) return
+            }
+            this.continuousVariableList.push({
+                ...item,
+                questionId: item.id
+            })
+            Object.assign(this.selectedContinuousVariableList, {[item.id] : {
+                ...item,
+                questionId: item.id
+            }})
+        },
+        async addMarkConfigList() {
+            console.log( this.selectedCategoricalVariableList)
+            for (const [key, value] of Object.entries(this.selectedCategoricalVariableList)) {
+                console.log(key)
+                await this.$store.dispatch("addMarkConfig", {
+                    ...value,
+                    projectId: this.projectId
+                });
+            }
+            for (const [key, value] of Object.entries(this.selectedContinuousVariableList)) {
+                console.log(key)
+                await this.$store.dispatch("addMarkConfig", {
+                    ...value,
+                    projectId: this.projectId
+                });
+            }
+
         }
-        
     }
 }
 </script>

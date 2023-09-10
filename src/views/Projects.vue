@@ -38,7 +38,7 @@
                                 append-icon="mdi-calendar"
                             ></v-text-field>
                         </template>
-                        <v-date-picker v-model="date" no-title @input="menu2 = false"></v-date-picker>
+                        <v-date-picker no-title @input="menu2 = false"></v-date-picker>
                     </v-menu>
                     <span class="mx-2">
                     至
@@ -62,7 +62,7 @@
                                 append-icon="mdi-calendar"
                             ></v-text-field>
                         </template>
-                        <v-date-picker v-model="date" no-title @input="menu2 = false"></v-date-picker>
+                        <v-date-picker no-title @input="menu2 = false"></v-date-picker>
                     </v-menu>
                     <v-spacer></v-spacer>
                     <v-btn depressed class="mr-4 btn-depressed">搜尋</v-btn>
@@ -70,7 +70,7 @@
                 </div>
                 <v-data-table
                     :headers="headers"
-                    :items="desserts"
+                    :items="projectList"
                     :page.sync="page"
                     hide-default-footer
                     class="elevation-0 project_table"
@@ -80,6 +80,17 @@
                         <div>
                             <v-switch color="#53BBB2" v-model="item.isPublic" hide-details="true"></v-switch>
                         </div>
+                    </template>
+                    <template v-slot:item.participants="{item}">
+                        <v-tooltip bottom v-for="(participant, index) in item.participants" :key="participant.id">
+                            <template v-slot:activator="{ on, attrs }">
+                                <v-avatar  :color="colorList[index]" size="24" v-bind="attrs" v-on="on">
+                                    <span class="white--text text-h6">{{participant.username[0]}}</span>
+                                </v-avatar>
+                            </template>
+                            <span>{{participant.email}}</span>
+                        </v-tooltip>
+                        
                     </template>
                     <template v-slot:item.actions="{item}">
                         <v-btn outlined class="mr-2 btn-outlined__grayish-blue" @click="markSetting(item)">標記設定</v-btn>
@@ -104,6 +115,7 @@
                     <v-pagination
                         v-model="page"
                         :length="pageCount"
+                        color="#53BBB2"
                     ></v-pagination>
                 </div>
             </div>
@@ -111,11 +123,12 @@
     </div>
 </template>
 <script>
+import { mapGetters } from "vuex";
+
 export default {
-    data: vm => ({
+    data: () => ({
             pageCount: 10,
             page: 1,
-            dateFormatted: vm.formatDate((new Date(Date.now() - (new Date()).getTimezoneOffset() * 60000)).toISOString().substr(0, 10)),
             date: "",
             menu2: false,
             headers: [
@@ -129,42 +142,27 @@ export default {
             },
             { text: '起始時間', value: 'startTime', class: 'my-header-style' },
             { text: '結束時間', value: 'endTime', class: 'my-header-style' },
-            { text: '參與人員', value: 'joinMembers', class: 'my-header-style' },
+            { text: '參與人員', value: 'participants', class: 'my-header-style' },
             { text: '操作', value: 'actions' ,align: 'center', class: 'my-header-style'},
             { text: '編輯', value: 'edit',align: 'center', class: 'my-header-style' },
             { text: '刪除', value: 'delete',align: 'center' ,class: 'my-header-style'}],
-            desserts: [{
-                isPublic: true,
-                id: 1,
-                name: "test",
-                startTime: "2021-11-11",
-                endTime: "2021-11-12",
-                joinMembers: ["test1"]
-            },{
-                isPublic: false,
-                id: 2,
-                name: "test",
-                startTime: "2021-11-11",
-                endTime: "2021-11-12",
-                joinMembers: ["test1"]
-            },{
-                isPublic: true,
-                id: 3,
-                name: "test",
-                startTime: "2021-11-11",
-                endTime: "2021-11-12",
-                joinMembers: ["test1"]
-            }],
             breadcrumbItems: [{
                 text: '我的專案',
                 disabled: true
-            }]
+            }],
+            colorList: ['#0288D1', '#00838F', '#9E9D24', '#5E35B1', '#1E88E5', '#3F51B5']
         }
     ),
+    async mounted() {
+      await this.$store.dispatch("getProjectList");
+    },
     computed: {
-      computedDateFormatted () {
-        return this.formatDate(this.date)
-      },
+        computedDateFormatted () {
+            return this.formatDate(this.date)
+        },
+        ...mapGetters({
+            projectList: "projectList",
+        }),
     },
     watch: {
       date () {

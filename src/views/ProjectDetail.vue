@@ -17,17 +17,17 @@
       style="background: #FAFCFE;overflow: scroll; flex:1; flex-direction:column;"
       class="pa-4 d-flex"
     >
-      <h2 class="mb-4">建立新專案</h2>
+      <h2 class="mb-4" v-if="projectId">更新專案</h2>
+      <h2 class="mb-4" v-else>建立新專案</h2>
+      
       <div
         style="border-radius:12px; background: #ffffff"
         class="px-8 py-5 mb-4"
       >
         <h3 class="mb-8">專案設定</h3>
-        <!-- <div class="d-flex align-center mb-4"> -->
         <v-row class="align-center">
           <v-col class="col-1 pa-0">
-            <!-- <div style="width: 50%" class="d-flex align-center"> -->
-            <span class="font-weight-medium">關鍵字</span>
+            <span class="font-weight-medium">專案名稱</span>
           </v-col>
           <v-col class="pa-0">
             <v-text-field
@@ -35,36 +35,33 @@
               outlined
               dense
               hide-details="true"
+              v-model="projectName"
               class="mr-4"
+              color="#53BBB2"
             ></v-text-field>
           </v-col>
-          <!-- </div> -->
-          <!-- <div style="width: 50%" class="d-flex align-center"> -->
           <v-col class="col-1 pa-0">
             <span class="font-weight-medium">專案狀態</span>
           </v-col>
           <v-col class="pa-0">
-            <v-radio-group v-model="row" row>
-              <v-radio label="公開" value="radio-1"></v-radio>
-              <v-radio label="私人" value="radio-2"></v-radio>
+            <v-radio-group v-model="isPublic" row>
+              <v-radio label="公開" value="public" color="#53BBB2"></v-radio>
+              <v-radio label="私人" value="private" color="#53BBB2"></v-radio>
             </v-radio-group>
           </v-col>
         </v-row>
-        <!-- </div> -->
-        <!-- </div> -->
-        <!-- <div class="d-flex align-center mb-4">
-                    <div class="d-flex align-center mb-4" style="width: 50%"> -->
         <v-row class="align-center">
           <v-col class="col-1 pa-0">
             <div class="font-weight-medium">標記者</div>
           </v-col>
           <v-col class="pa-0">
             <v-autocomplete
-              v-model="friends"
-              :items="people"
+              color="#53BBB2"
+              v-model="taggers"
+              :items="userList"
               chips
-              item-text="name"
-              item-value="name"
+              item-text="username"
+              item-value="id"
               multiple
               outlined
               dense
@@ -80,25 +77,9 @@
                   @click:close="remove(data.item)"
                   class="mb-1"
                 >
-                  <v-avatar left>
-                    <v-img :src="data.item.avatar"></v-img>
-                  </v-avatar>
-                  {{ data.item.name }}
+                  {{ data.item.username }}
                 </v-chip>
               </template>
-              <!-- <template v-slot:item="data">
-                            <template v-if="typeof data.item !== 'object'">
-                                <v-list-item-content>{{data.item}}</v-list-item-content>
-                            </template>
-                            <template v-else>
-                            <v-list-item-avatar>
-                            </v-list-item-avatar>
-                            <v-list-item-content>
-                                <v-list-item-title>{{data.item.name}}</v-list-item-title>
-                                <v-list-item-subtitle>{{data.item.group}}</v-list-item-subtitle>
-                            </v-list-item-content>
-                            </template>
-                        </template> -->
             </v-autocomplete>
           </v-col>
           <v-col class="col-1 pa-0">
@@ -112,6 +93,7 @@
               outlined
               dense
               hide-details="true"
+              color="#53BBB2"
             >
               <template v-slot:selection="data">
                 <v-chip
@@ -130,11 +112,11 @@
             </v-combobox>
           </v-col>
         </v-row>
-        <div class="d-flex mt-8">
+        <!-- <div class="d-flex mt-8">
           <v-spacer></v-spacer>
           <v-btn outlined class="mr-4 btn-outlined">清除</v-btn>
-          <v-btn depressed class="btn-depressed">確定</v-btn>
-        </div>
+          <v-btn depressed class="btn-depressed" @click="setProjectConfig">確定</v-btn>
+        </div> -->
       </div>
       <div style="border-radius:12px; background: #ffffff" class="px-8 py-5">
         <div style="background: #F5F8FA; border-radius:4px" class="pa-4 mb-4">
@@ -145,12 +127,12 @@
                 <span class="font-weight-medium">判決類型</span>
               </v-col>
               <v-col>
-                <v-radio-group v-model="row" row>
-                  <v-radio label="民事" value="radio-1"></v-radio>
-                  <v-radio label="刑事" value="radio-2"></v-radio>
-                  <v-radio label="行政" value="radio-3"></v-radio>
-                  <v-radio label="憲法" value="radio-4"></v-radio>
-                  <v-radio label="懲戒" value="radio-5"></v-radio>
+                <v-radio-group v-model="judgementType" row>
+                  <v-radio label="民事" value="civil"></v-radio>
+                  <v-radio label="刑事" value="criminal"></v-radio>
+                  <v-radio label="行政" value="administrative"></v-radio>
+                  <v-radio label="憲法" value="constitution"></v-radio>
+                  <v-radio label="懲戒" value="discipline"></v-radio>
                 </v-radio-group>
               </v-col>
               <v-col class="col-1 pa-0">
@@ -278,9 +260,9 @@
           </div>
         </div>
         <v-data-table
-          v-model="selected"
+          v-model="selectedJudgements"
           :headers="headers"
-          :items="judgmentList"
+          :items="judgementList"
           :page.sync="page"
           :single-select="singleSelect"
           hide-default-footer
@@ -288,26 +270,23 @@
           show-select
           @page-count="pageCount = $event"
         >
-          <!-- <template v-slot:item.="{ item }">
-            <span class="single-line-ellipsis">{{ item.Court }}</span>
-          </template> -->
-          <template v-slot:item.Court="{ item }">
-            <div>{{ item.Court }}</div>
+          <template v-slot:item.name="{ item }">
+            <div>{{ item.name }}</div>
           </template>
-          <template v-slot:item.Judgement="{ item }">
-            <span class="two-line-ellipsis">{{ item.Judgement }}</span>
+          <template v-slot:item.judgement="{ item }">
+            <span class="two-line-ellipsis">{{ item.judgement }}</span>
           </template>
           <template v-slot:item.actions="{ item }">
             <v-btn
               depressed
               style="background: #A1A5B7;color:#ffffff"
-              @click="viewJudgment(item)"
+              @click="viewJudgement(item)"
               >查看</v-btn
             >
           </template>
         </v-data-table>
         <div class="d-flex mt-4 align-center">
-          <span>Showing 1 to 10 of {{judgmentList.length}} entries</span>
+          <span>Showing 1 to 10 of {{judgementList.length}} entries</span>
           <v-spacer></v-spacer>
           <v-pagination
             color="#53BBB2"
@@ -316,14 +295,14 @@
           ></v-pagination>
         </div>
         <div class="d-flex mt-8">
-          <v-btn depressed class="mr-4 btn-depressed">確定</v-btn>
+          <v-btn depressed class="mr-4 btn-depressed" @click="setProjectConfig">確定</v-btn>
           <v-btn outlined class="btn-outlined">清除</v-btn>
         </div>
       </div>
     </div>
     <v-dialog v-model="openDialog" width="500">
       <v-card>
-        <v-card-text class="py-10" v-html="judgmentString"> </v-card-text>
+        <v-card-text style="white-space: pre;" class="py-10 subtitle-1" v-html="judgementString"> </v-card-text>
       </v-card>
     </v-dialog>
   </div>
@@ -341,6 +320,8 @@
         5: "https://cdn.vuetifyjs.com/images/lists/5.jpg",
       };
       return {
+        projectName: "",
+        isPublic: "public",
         tips: "搜尋關鍵字用「空白鍵」或「&」連接代表and，用「+」連接代表or，用「-」<br/>連接在關鍵字前方代表不包含此關鍵字，需注意「-」前必須要用空白鍵隔開。",
         people: [
           { header: "Group 1" },
@@ -356,10 +337,9 @@
           { name: "Sandra Williams", group: "Group 2", avatar: srcs[3] },
         ],
         tags: [],
-        friends: ["Sandra Adams", "Britta Holt"],
         openDialog: false,
-        judgmentString: "",
-        selected: [],
+        judgementString: "",
+        selectedJudgements: [],
         singleSelect: false,
         pageCount: 10,
         page: 1,
@@ -371,11 +351,12 @@
             text: "裁判字號",
             align: "start",
             sortable: false,
-            value: "Court",
+            value: "name",
+             width: "200px"
           },
-          { text: "判決時間", sortable: false, value: "Date", width: "120px" },
-          { text: "法院層級", sortable: false, value: "Court", width: "100px" },
-          { text: "內容預覽", sortable: false, value: "Judgement", width: "40%" },
+          { text: "判決時間", sortable: false, value: "date", width: "120px" },
+          { text: "法院層級", sortable: false, value: "court", width: "120px" },
+          { text: "內容預覽", sortable: false, value: "judgement"},
           { text: "操作", sortable: false, value: "actions", align: "center" },
         ],
         breadcrumbItems: [
@@ -384,7 +365,9 @@
             disabled: true,
           },
         ],
-        row: null,
+        taggers: [],
+        judgementType: "",
+        projectId: ""
       };
     },
     computed: {
@@ -392,25 +375,51 @@
         return this.formatDate(this.date);
       },
       ...mapGetters({
-        judgmentList: "judgmentList",
+        judgementList: "judgementList",
+        project: "project",
+        userList: "userList"
       }),
     },
     async mounted() {
-      await this.$store.dispatch("getJudgmentList");
-      console.log(this.$route.params.projectId)
+      this.projectId = this.$route.params.projectId
+      if (this.projectId) {
+        await this.$store.dispatch("getProject", this.projectId);
+      }
+      await this.$store.dispatch("getJudgementList", {});
+      await this.$store.dispatch("getUserList", {});
     },
     watch: {
       date() {
         this.dateFormatted = this.formatDate(this.date);
       },
+      project(data) {
+        if (!data) return
+        this.projectName = data.name
+        this.isPublic = data.isPublic == 1 ? 'public' : 'private'
+        this.taggers = data.participants
+
+      },
+      judgementList(data) {
+        const judgementSet = new Set(this.project.judgementList)
+
+        if (!this.projectId) return
+        for (const judgement of data) {
+            if (judgementSet.has(judgement.id)) {
+              this.selectedJudgements.push(judgement)
+              judgementSet.delete(judgement.id)
+            }
+
+            if (judgementSet.size == 0) break
+        }
+      }
     },
     methods: {
       markSetting(item) {
         this.$router.push(`/mark-setting/${item.id}`);
       },
-      viewJudgment(item) {
+      viewJudgement(item) {
         this.openDialog = true;
-        this.judgmentString = item.Judgement;
+        this.judgementString = item.judgement;
       },
       formatDate(date) {
         if (!date) return null;
@@ -432,6 +441,22 @@
         const index = this.tags.indexOf(item);
         if (index >= 0) this.tags.splice(index, 1);
       },
+      async setProjectConfig() {
+        if (!this.projectId) {
+          await this.createProject()
+        }
+
+      },
+      async createProject() {
+        await this.$store.dispatch("createProject", {
+          name: this.projectName,
+          judgementList: this.selectedJudgements,
+          participants: this.taggers,
+          isPublic: this.isPublic == "public" ? true : false
+        });
+
+        this.$router.push(`/projects`)
+      }
     }
   };
 </script>
